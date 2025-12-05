@@ -34,11 +34,47 @@ export class LlmController {
 
 
             const prompt = `
-Evalúa el siguiente código para java. Indica si el resultado coincide un poco o se acerca un poco con "${exercise.expectedOutput}".
-Devuelve un JSON con { verdict: "correcto" | "incorrecto" }.
+Evalúa la solución del usuario para un ejercicio de Java.
 
-Código:
+Tu tarea:
+
+1. **IGNORA** diferencias menores como:
+   - nombres de variables distintos
+   - diferente formato, indentación o espacios
+   - estilo diferente de impresión (println vs print, salto de línea, etc.)
+   - orden diferente siempre que la lógica sea equivalente
+   - concatenación distinta de Strings
+   - tipos compatibles (ej. usar var en lugar de tipo explícito si aplica)
+   - uso ligeramente diferente de estructuras válidas dentro del subtema
+
+2. **NO EXIJAS** que el código coincida exactamente con el expectedOutput.
+
+3. Determina si el código del usuario:
+   - cumple la intención general del ejercicio,
+   - realiza la lógica esencial descrita por el subtema,
+   - produce razonablemente el mismo resultado aunque sea con diferencias menores.
+
+4. Sé muy tolerante. Solo marca "incorrecto" si:
+   - el código está vacío,
+   - tiene errores graves de sintaxis,
+   - no hace nada relacionado con el propósito académico,
+   - o contradice por completo la lógica del ejercicio.
+
+Devuelve **SOLO** un JSON válido sin texto adicional:
+
+{
+  "verdict": "correcto" o "incorrecto",
+  "reason": "Explicación breve del por qué"
+}
+
+---
+
+**Código del usuario:**
 ${userCode}
+
+**Solución esperada (solo referencia conceptual):**
+${exercise.expectedOutput}
+
 `;
 
             const result = await callLLM(prompt);

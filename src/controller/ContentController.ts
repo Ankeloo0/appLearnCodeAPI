@@ -290,26 +290,41 @@ export class ContentController {
 
             // 3. Generar ejercicio solo si requiresExercise = true
             if (subtopic.requiresExercise !== false) {
-                const exercisePrompt = `
-                Devuelve SOLO un JSON válido (sin texto adicional) usando triple backticks.
-                Asegúrate de que "expectedOutput" sea un snippet de código Java que funcione
-                y que "solutionExplanation" explique los pasos.
+          const exercisePrompt = `
+            Devuelve SOLO un JSON válido. NO incluyas comentarios ni texto fuera del JSON.
 
-                Formato:
-                \`\`\`json
-                {
-                    "title": "string",
-                    "description": "string",
-                    "codeTemplate": "string",
-                    "expectedOutput": "string (código Java)",
-                    "solutionExplanation": "string",
-                    "question": "string"
-                }
-                \`\`\`
+            ⚠️ Reglas didácticas:
+            - SOLO usa conceptos que aparezcan explícitamente en:
+            """${subtopic.content}"""
+            - No uses arreglos si el contenido no habla de arreglos.
+            - No uses ciclos si el contenido no habla de ciclos.
+            - No uses condicionales si el contenido no menciona condicionales.
+            - No inventes temas.
+            
+            ⚠️ IMPORTANTE SOBRE expectedOutput:
+            - "expectedOutput" debe ser la solucion del ejercicio, la cual lo indicara "solutionExplanation", ademas "expectedOutput" contener ÚNICAMENTE el código Java que reemplaza a:
+              /* tu código aquí */
+            - NO incluyas el programa completo.
+            - Debe ser un snippet limpio y ejecutable dentro del método main.
 
-                Crea un ejercicio práctico en Java sobre el tema "${subtopic.title}",
-                relacionado con: "${subtopic.content}".
+            ⚠️ IMPORTANTE sobre solutionExplanation:
+            - Debe ser una explicación larga, detallada, paso a paso para que el usuario pueda llegar a la solucion que estara contenida en "expectedOutput".
+            - Explica QUÉ hace el ejercicio, POR QUÉ, y CÓMO debe resolverlo el usuario.
+
+            Formato:
+            \`\`\`json
+            {
+              "title": "string",
+              "description": "string",
+              "codeTemplate": "string",
+              "expectedOutput": "string",
+              "solutionExplanation": "string"
+            }
+            \`\`\`
+
+            Genera un ejercicio práctico en Java para el subtema "${subtopic.title}".
             `;
+
 
                 const eDataRaw = await callLLM(exercisePrompt);
 
@@ -405,34 +420,34 @@ export class ContentController {
     }
 
     static async deleteSubtopic(req: Request, res: Response) {
-    try {
-        const { id } = req.params;
+        try {
+            const { id } = req.params;
 
-        // 1. Borrar el subtopic
-        const subtopic = await Subtopic.findByIdAndDelete(id);
-        if (!subtopic) {
-            return res.status(404).json({ error: "Subtema no encontrado" });
+            // 1. Borrar el subtopic
+            const subtopic = await Subtopic.findByIdAndDelete(id);
+            if (!subtopic) {
+                return res.status(404).json({ error: "Subtema no encontrado" });
+            }
+
+            // 2. Borrar progreso de todos los usuarios
+            await UserProgress.deleteMany({ subtopic: id });
+
+            // 3. Reacomodar orden de los subtopics restantes
+            const remaining = await Subtopic.find({ topic: subtopic.topic }).sort({ order: 1 });
+
+            await Promise.all(
+                remaining.map((s, idx) => {
+                    s.order = idx;
+                    return s.save();
+                })
+            );
+
+            res.json({ message: "Subtema eliminado, progreso limpiado y órdenes reasignados" });
+
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Error al eliminar el subtema" });
         }
-
-        // 2. Borrar progreso de todos los usuarios
-        await UserProgress.deleteMany({ subtopic: id });
-
-        // 3. Reacomodar orden de los subtopics restantes
-        const remaining = await Subtopic.find({ topic: subtopic.topic }).sort({ order: 1 });
-
-        await Promise.all(
-            remaining.map((s, idx) => {
-                s.order = idx;
-                return s.save();
-            })
-        );
-
-        res.json({ message: "Subtema eliminado, progreso limpiado y órdenes reasignados" });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error al eliminar el subtema" });
-    }
     }
 
 }
