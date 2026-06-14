@@ -8,7 +8,7 @@ export async function callLLM(prompt: string): Promise<any> {
     const resp = await axios.post(
       GROQ_API_URL,
       {
-        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       },
